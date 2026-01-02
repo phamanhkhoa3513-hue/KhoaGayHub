@@ -1,0 +1,2 @@
+getgenv().Team = "Marines"
+loastring(game:HttpGet("https://raw.githubusercontent.com/phamanhkhoa3513-hue/Hop-fruit/refs/heads/main/Hop%20fruit"))();
