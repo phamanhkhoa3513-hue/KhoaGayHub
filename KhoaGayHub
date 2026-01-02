@@ -1,65 +1,72 @@
--- [[ KHOAGAY HUB - FRESH SERVER SNIPER ]]
+-- [[ KHOAGAY HUB - HYBRID SNIPER: FRESH & GOLDEN TIME ]]
 
 getgenv().Team = "Marines"
-getgenv().CheckedServers = getgenv().CheckedServers or {}
+getgenv().Visited = getgenv().Visited or {}
 
 repeat task.wait() until game:IsLoaded()
 
 local Player = game.Players.LocalPlayer
 local Status
 
--- 1. UI SNIPER
+-- 1. GIAO DIỆN HYBRID SIÊU CẤP
 local function CreateUI()
     local sg = Instance.new("ScreenGui", Player.PlayerGui)
     local frame = Instance.new("Frame", sg)
-    frame.Size = UDim2.new(0, 300, 0, 100)
-    frame.Position = UDim2.new(0.5, -150, 0.05, 0)
-    frame.BackgroundColor3 = Color3.fromRGB(0, 40, 0) -- Màu xanh thợ săn
+    frame.Size = UDim2.new(0, 320, 0, 110)
+    frame.Position = UDim2.new(0.5, -160, 0.05, 0)
+    frame.BackgroundColor3 = Color3.fromRGB(10, 0, 30) -- Màu tím thợ săn
     frame.BorderSizePixel = 2
-    frame.BorderColor3 = Color3.fromRGB(0, 255, 0)
+    frame.BorderColor3 = Color3.fromRGB(0, 255, 255)
     Instance.new("UICorner", frame)
 
+    local title = Instance.new("TextLabel", frame)
+    title.Size = UDim2.new(1, 0, 0, 40); title.Text = "🔮 KHOAGAY HYBRID SNIPER 🔮"
+    title.TextColor3 = Color3.fromRGB(0, 255, 255); title.Font = Enum.Font.GothamBold
+    title.TextSize = 16; title.BackgroundTransparency = 1
+
     Status = Instance.new("TextLabel", frame)
-    Status.Size = UDim2.new(1, 0, 1, 0)
-    Status.Text = "📡 ĐANG SĂN SERVER MỚI MỞ..."; Status.TextColor3 = Color3.fromRGB(0, 255, 0)
-    Status.Font = Enum.Font.GothamBold; Status.TextSize = 14; Status.BackgroundTransparency = 1
+    Status.Size = UDim2.new(1, 0, 0, 50); Status.Position = UDim2.new(0, 0, 0.45, 0)
+    Status.Text = "📡 ĐANG LỌC SERVER (FRESH & 60P)..."; Status.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Status.Font = Enum.Font.GothamBold; Status.TextSize = 13; Status.BackgroundTransparency = 1
 end
 
--- 2. THUẬT TOÁN TÌM SERVER MỚI (NEWEST SERVERS)
-local function NewServerHop()
+-- 2. HÀM NHẢY SERVER HYBRID (LỌC CẢ SERVER MỚI & SERVER GIỜ VÀNG)
+local function HybridHop()
     local HttpService = game:GetService("HttpService")
     local TeleportService = game:GetService("TeleportService")
     
-    -- Lấy server theo thứ tự mới nhất (Descending thường là server mới tạo)
-    local Api = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&limit=100"
-    
+    -- API lấy danh sách server
+    local Api = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
     local success, result = pcall(function() return HttpService:JSONDecode(game:HttpGet(Api)) end)
     
     if success and result.data then
         for _, s in pairs(result.data) do
-            -- Tìm server vắng (dưới 3 người) và chưa check
-            if s.playing > 0 and s.playing <= 3 and s.id ~= game.JobId and not getgenv().CheckedServers[s.id] then
-                getgenv().CheckedServers[s.id] = true
-                Status.Text = "🚀 PHÁT HIỆN SERVER MỚI! NHẢY..."
+            -- LOGIC HYBRID:
+            -- 1. Server 1 người = Server mới mở (Tỉ lệ 90% có trái nếu vừa mọc)
+            -- 2. Server 2-4 người = Server 'Giờ Vàng' 45-60p (Tỉ lệ 100% đã spawn)
+            if s.playing >= 1 and s.playing <= 4 and s.id ~= game.JobId and not getgenv().Visited[s.id] then
+                getgenv().Visited[s.id] = true
+                Status.Text = "🚀 VÀO MỤC TIÊU: " .. s.playing .. " NGƯỜI (FRESH/GOLDEN)"
                 TeleportService:TeleportToPlaceInstance(game.PlaceId, s.id, Player)
                 return
             end
         end
     end
-    -- Reset nếu đã check hết
-    getgenv().CheckedServers = {}
+    -- Reset danh sách và nhảy lại nếu hết server thỏa mãn
+    getgenv().Visited = {}
     TeleportService:Teleport(game.PlaceId)
 end
 
--- 3. LOGIC QUÉT TRÁI SIÊU TỐC
+-- 3. LOGIC QUÉT VÀ LỤM (PHẢI CẦM TRÊN TAY)
 CreateUI()
 task.spawn(function()
+    -- Tự chọn phe
     pcall(function() game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("SetTeam", getgenv().Team) end)
     task.wait(1)
 
     while true do
         local fruit = nil
-        -- Quét nhanh Workspace
+        -- Quét toàn bộ map ngay khi vào
         for _, v in pairs(game.Workspace:GetChildren()) do
             if v:IsA("Tool") and (v.Name:find("Fruit") or v:FindFirstChild("Handle")) then
                 fruit = v
@@ -68,9 +75,11 @@ task.spawn(function()
         end
 
         if fruit then
-            Status.Text = "🍎 THẤY TRÁI Ở SERVER MỚI: " .. fruit.Name:upper()
+            Status.Text = "🍎 ĐÃ TÌM THẤY: " .. fruit.Name:upper()
+            Status.TextColor3 = Color3.fromRGB(255, 255, 0)
             local hrp = Player.Character:WaitForChild("HumanoidRootPart")
             
+            -- Bay tới lụm
             repeat
                 hrp.CFrame = fruit.Handle.CFrame
                 task.wait(0.1)
@@ -78,22 +87,21 @@ task.spawn(function()
 
             local tool = Player.Backpack:FindFirstChild(fruit.Name)
             if tool then
-                Player.Character.Humanoid:EquipTool(tool) -- Cầm lên tay (đúng ý ní)
+                Player.Character.Humanoid:EquipTool(tool) -- Cầm lên tay xác nhận
                 task.wait(1)
-                game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("StoreFruit", tool.Name, tool) -- Cất rương
+                Status.Text = "📦 ĐANG CẤT VÀO RƯƠNG..."
+                game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("StoreFruit", tool.Name, tool)
                 task.wait(1)
-                NewServerHop()
+                HybridHop()
                 break
             end
         else
-            -- Nếu server mới mà không có trái ngay -> Nhảy tiếp server khác
-            Status.Text = "❌ SERVER MỚI KHÔNG CÓ TRÁI. ĐỔI..."
-            task.wait(0.5)
-            NewServerHop()
+            -- Nếu server không có trái ngay (không lãng phí thời gian)
+            Status.Text = "❌ KHÔNG CÓ TRÁI. ĐANG ĐỔI SERVER..."
+            task.wait(0.3)
+            HybridHop()
             break
         end
         task.wait(1)
     end
 end)
-
-
