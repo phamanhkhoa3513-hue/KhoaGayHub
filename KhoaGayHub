@@ -1,108 +1,99 @@
--- [[ KHOAGAY HUB - HOLD TO HOP ]]
+-- [[ KHOAGAY HUB - FRESH SERVER SNIPER ]]
 
-getgenv().Team = "Marines" 
+getgenv().Team = "Marines"
+getgenv().CheckedServers = getgenv().CheckedServers or {}
 
-repeat task.wait() 
-until game:IsLoaded() and game.Players.LocalPlayer and game.Players.LocalPlayer:FindFirstChild("PlayerGui")
+repeat task.wait() until game:IsLoaded()
 
 local Player = game.Players.LocalPlayer
 local Status
 
--- 1. GIAO DIỆN
+-- 1. UI SNIPER
 local function CreateUI()
     local sg = Instance.new("ScreenGui", Player.PlayerGui)
     local frame = Instance.new("Frame", sg)
-    frame.Size = UDim2.new(0, 280, 0, 100)
-    frame.Position = UDim2.new(0.5, -140, 0.2, 0)
-    frame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+    frame.Size = UDim2.new(0, 300, 0, 100)
+    frame.Position = UDim2.new(0.5, -150, 0.05, 0)
+    frame.BackgroundColor3 = Color3.fromRGB(0, 40, 0) -- Màu xanh thợ săn
     frame.BorderSizePixel = 2
-    frame.BorderColor3 = Color3.fromRGB(255, 0, 0)
+    frame.BorderColor3 = Color3.fromRGB(0, 255, 0)
     Instance.new("UICorner", frame)
 
-    local title = Instance.new("TextLabel", frame)
-    title.Size = UDim2.new(1, 0, 0, 50); title.Text = "🍎 KHOAGAY HUB 🍎"
-    title.TextColor3 = Color3.fromRGB(255, 0, 0); title.Font = Enum.Font.GothamBold
-    title.TextSize = 22; title.BackgroundTransparency = 1
-
     Status = Instance.new("TextLabel", frame)
-    Status.Size = UDim2.new(1, 0, 0, 40); Status.Position = UDim2.new(0, 0, 0.55, 0)
-    Status.Text = "⚓ ĐANG CHUẨN BỊ..."; Status.TextColor3 = Color3.fromRGB(0, 255, 255)
-    Status.Font = Enum.Font.GothamBold; Status.TextSize = 16; Status.BackgroundTransparency = 1
+    Status.Size = UDim2.new(1, 0, 1, 0)
+    Status.Text = "📡 ĐANG SĂN SERVER MỚI MỞ..."; Status.TextColor3 = Color3.fromRGB(0, 255, 0)
+    Status.Font = Enum.Font.GothamBold; Status.TextSize = 14; Status.BackgroundTransparency = 1
 end
 
--- 2. HÀM NHẢY SERVER
-local function ServerHop()
-    Status.Text = "♻️ ĐANG NHẢY SERVER..."
-    pcall(function()
-        local result = game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100")
-        local data = game:GetService("HttpService"):JSONDecode(result)
-        for _, s in pairs(data.data) do
-            if s.playing < s.maxPlayers and s.id ~= game.JobId then
-                game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, s.id, Player)
+-- 2. THUẬT TOÁN TÌM SERVER MỚI (NEWEST SERVERS)
+local function NewServerHop()
+    local HttpService = game:GetService("HttpService")
+    local TeleportService = game:GetService("TeleportService")
+    
+    -- Lấy server theo thứ tự mới nhất (Descending thường là server mới tạo)
+    local Api = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&limit=100"
+    
+    local success, result = pcall(function() return HttpService:JSONDecode(game:HttpGet(Api)) end)
+    
+    if success and result.data then
+        for _, s in pairs(result.data) do
+            -- Tìm server vắng (dưới 3 người) và chưa check
+            if s.playing > 0 and s.playing <= 3 and s.id ~= game.JobId and not getgenv().CheckedServers[s.id] then
+                getgenv().CheckedServers[s.id] = true
+                Status.Text = "🚀 PHÁT HIỆN SERVER MỚI! NHẢY..."
+                TeleportService:TeleportToPlaceInstance(game.PlaceId, s.id, Player)
                 return
             end
         end
-    end)
+    end
+    -- Reset nếu đã check hết
+    getgenv().CheckedServers = {}
+    TeleportService:Teleport(game.PlaceId)
 end
 
--- 3. VÒNG LẶP CHÍNH
+-- 3. LOGIC QUÉT TRÁI SIÊU TỐC
 CreateUI()
 task.spawn(function()
-    -- Tự vào phe
     pcall(function() game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("SetTeam", getgenv().Team) end)
-    repeat task.wait(1) until Player.Team ~= nil
-    
+    task.wait(1)
+
     while true do
-        local fruitOnGround = nil
+        local fruit = nil
+        -- Quét nhanh Workspace
         for _, v in pairs(game.Workspace:GetChildren()) do
             if v:IsA("Tool") and (v.Name:find("Fruit") or v:FindFirstChild("Handle")) then
-                fruitOnGround = v
+                fruit = v
                 break
             end
         end
 
-        if fruitOnGround then
-            Status.Text = "🍎 THẤY TRÁI! ĐANG TỚI LỤM..."
+        if fruit then
+            Status.Text = "🍎 THẤY TRÁI Ở SERVER MỚI: " .. fruit.Name:upper()
             local hrp = Player.Character:WaitForChild("HumanoidRootPart")
             
-            -- Lặp lại việc bay tới trái cho đến khi lụm được vào Backpack
             repeat
-                hrp.CFrame = fruitOnGround.Handle.CFrame
-                task.wait(0.5)
-            until Player.Backpack:FindFirstChild(fruitOnGround.Name) or not fruitOnGround:IsDescendantOf(game.Workspace)
+                hrp.CFrame = fruit.Handle.CFrame
+                task.wait(0.1)
+            until Player.Backpack:FindFirstChild(fruit.Name) or not fruit:IsDescendantOf(game.Workspace)
 
-            -- Khi đã có trong Backpack, bắt đầu cầm lên tay
-            local tool = Player.Backpack:FindFirstChild(fruitOnGround.Name)
+            local tool = Player.Backpack:FindFirstChild(fruit.Name)
             if tool then
-                Status.Text = "🖐️ ĐANG CẦM TRÁI TRÊN TAY..."
-                Player.Character.Humanoid:EquipTool(tool)
-                
-                -- Đợi đến khi trái thực sự nằm trên tay (Character)
-                local timeout = 0
-                repeat 
-                    task.wait(0.5) 
-                    timeout = timeout + 1
-                until Player.Character:FindFirstChild(tool.Name) or timeout > 10
-                
-                -- Cất vào rương (Store)
-                Status.Text = "📦 ĐANG CẤT VÀO RƯƠNG..."
-                game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("StoreFruit", tool.Name, tool)
+                Player.Character.Humanoid:EquipTool(tool) -- Cầm lên tay (đúng ý ní)
                 task.wait(1)
-                
-                -- Xong xuôi mới nhảy
-                ServerHop()
+                game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("StoreFruit", tool.Name, tool) -- Cất rương
+                task.wait(1)
+                NewServerHop()
                 break
             end
         else
-            -- Không có trái thì nhảy sau 5s
-            for i = 5, 1, -1 do
-                Status.Text = "🔍 QUÉT TRÁI... NHẢY TRONG: "..i.."s"
-                task.wait(1)
-            end
-            ServerHop()
+            -- Nếu server mới mà không có trái ngay -> Nhảy tiếp server khác
+            Status.Text = "❌ SERVER MỚI KHÔNG CÓ TRÁI. ĐỔI..."
+            task.wait(0.5)
+            NewServerHop()
             break
         end
         task.wait(1)
     end
 end)
+
 
